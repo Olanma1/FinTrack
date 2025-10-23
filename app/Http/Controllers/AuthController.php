@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use App\Mail\OtpMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 
@@ -22,15 +23,16 @@ class AuthController extends Controller
 
         // Generate OTP
         $otp = rand(100000, 999999);
-        $user->update([
-            'otp' => $otp,
-            'otp_expires_at' => Carbon::now()->addMinutes(10),
-        ]);
+        $user->otp = $otp;
+        $user->is_verified = false;
+        $user->save();
 
-        Mail::raw("Your FinTrack verification code is: {$otp}", function ($message) use ($user) {
-            $message->to($user->email)
-                    ->subject('FinTrack Account Verification Code');
-        });
+        // Send OTP to user
+        Mail::to($user->email)->send(new OtpMail($otp));       
+         $user->update([
+                'otp' => $otp,
+                'otp_expires_at' => Carbon::now()->addMinutes(10),
+            ]);
 
         return response()->json(['message' => 'OTP sent to your email. Please verify to continue.'], 201);
     }
