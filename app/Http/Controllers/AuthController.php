@@ -29,12 +29,15 @@ class AuthController extends Controller
         $user->save();
 
         // Send OTP to user
-Log::info($otp);        // Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('olanmamary2@gmail.com')->subject('Mail test'));
-        // Mail::to($user->email)->send(new OtpMail($otp));       
-         $user->update([
-                'otp' => $otp,
-                'otp_expires_at' => Carbon::now()->addMinutes(10),
-            ]);
+
+        Mail::raw("Your FinTrack OTP code is: {$otp}", function ($message) use ($user) {
+        $message->to($user->email)
+                ->subject('Your FinTrack OTP Code');
+        });
+        $user->update([
+            'otp' => $otp,
+            'otp_expires_at' => Carbon::now()->addMinutes(10),
+        ]);
 
         return response()->json(['message' => 'OTP sent to your email. Please verify to continue.'], 201);
     }
