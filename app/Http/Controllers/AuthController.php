@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Mail;
 use App\Mail\OtpMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Log;
 
 class AuthController extends Controller
 {
@@ -28,7 +29,7 @@ class AuthController extends Controller
         $user->save();
 
         // Send OTP to user
-        Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('olanmamary2@gmail.com')->subject('Mail test'));
+Log::info(Mail::to($user->email)->send(new OtpMail($otp)));        // Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('olanmamary2@gmail.com')->subject('Mail test'));
         // Mail::to($user->email)->send(new OtpMail($otp));       
          $user->update([
                 'otp' => $otp,
