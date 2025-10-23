@@ -28,7 +28,8 @@ class AuthController extends Controller
         $user->save();
 
         // Send OTP to user
-        Mail::to($user->email)->send(new OtpMail($otp));       
+        Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('your-email@example.com')->subject('Mail test'));
+        // Mail::to($user->email)->send(new OtpMail($otp));       
          $user->update([
                 'otp' => $otp,
                 'otp_expires_at' => Carbon::now()->addMinutes(10),
