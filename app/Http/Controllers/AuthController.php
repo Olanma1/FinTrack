@@ -28,7 +28,7 @@ class AuthController extends Controller
         $user->save();
 
         // Send OTP to user
-        Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('your-email@example.com')->subject('Mail test'));
+        Mail::raw('Test mail from FinTrack', fn($msg) => $msg->to('olanmamary2@gmail.com')->subject('Mail test'));
         // Mail::to($user->email)->send(new OtpMail($otp));       
          $user->update([
                 'otp' => $otp,
