@@ -8,8 +8,8 @@ use App\Http\Controllers\{
     TransactionController,
     BudgetController,
     GoalController,
-    DashboardController,
-    NotificationController
+    WalletController,
+    InsightController
 };
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -20,4 +20,14 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::get('/wallet', [WalletController::class, 'show']);
+
+    Route::apiResource('transactions', TransactionController::class);
+
+    Route::apiResource('budgets', BudgetController::class);
+
+    Route::apiResource('goals', GoalController::class);
+
+    Route::get('/insights/summary', [InsightController::class, 'summary']);
 });
