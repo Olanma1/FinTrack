@@ -30,7 +30,9 @@ class TransactionController extends Controller
 
         $validated['date'] = $validated['date'] ?? now();
         $transaction = $request->user()->transactions()->create($validated);
-        $transaction->user->wallet->recalculateBalance();
+        if ($transaction->user->wallet) {
+            $transaction->user->wallet->recalculateBalance();
+        }
 
         return response()->json($transaction, 201);
     }
