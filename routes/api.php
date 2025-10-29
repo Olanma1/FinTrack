@@ -30,4 +30,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('goals', GoalController::class);
 
     Route::get('/insights/summary', [InsightController::class, 'summary']);
+    
+    Route::get('/categories', [CategoryController::class, 'index']);
+
 });

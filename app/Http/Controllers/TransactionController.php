@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Auth;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -33,6 +34,7 @@ class TransactionController extends Controller
         if ($transaction->user->wallet) {
             $transaction->user->wallet->recalculateBalance();
         }
+        $transaction->load('category');
 
         return response()->json($transaction, 201);
     }
@@ -43,6 +45,7 @@ class TransactionController extends Controller
     public function show(Transaction $transaction)
     {
         // $this->authorize('view', $transaction);
+        $transaction->load('category');
         return response()->json($transaction);
     }
 
@@ -54,7 +57,7 @@ class TransactionController extends Controller
         //  $this->authorize('update', $transaction);
         $transaction->update($request->validated());
         $transaction->user->wallet->recalculateBalance();
-
+        $transaction->load('category');
         return response()->json($transaction);
     }
 
@@ -64,6 +67,9 @@ class TransactionController extends Controller
     public function destroy(Transaction $transaction)
     {
         // $this->authorize('delete', $transaction);
+        if ($transaction->user_id !== Auth::id()) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
         $transaction->delete();
         $transaction->user->wallet->recalculateBalance();
 
