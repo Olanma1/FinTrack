@@ -26,6 +26,7 @@ class StoreTransactionRequest extends FormRequest
             'category_id' => 'nullable|exists:categories,id',
             'amount' => 'required|numeric|min:0',
             'note' => 'nullable|string|max:255',
+            'goal_id' => 'nullable|exists:goals,id',
             'date' => 'nullable|date',
         ];
     }

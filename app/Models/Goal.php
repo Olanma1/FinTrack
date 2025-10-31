@@ -26,5 +26,12 @@ class Goal extends Model
     {
         $percent = ($this->current_amount / $this->target_amount) * 100;
         return round(min(100, $percent), 1);
+        $this->current_amount += $amount;
+        $this->save();
+    }
+
+    public function transactions()
+    {
+        return $this->hasMany(Transaction::class);
     }
 }

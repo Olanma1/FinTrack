@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Support\Facades\Auth;
+use App\Models\Goal;
 use App\Http\Requests\StoreTransactionRequest;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
@@ -35,8 +36,25 @@ class TransactionController extends Controller
             $transaction->user->wallet->recalculateBalance();
         }
         $transaction->load('category');
+        if (!empty($validated['goal_id'])) {
+            $goal = Goal::find($validated['goal_id']);
 
-        return response()->json($transaction, 201);
+            // Only add money to goals if it's income
+            if ($validated['type'] === 'income') {
+                $goal->current_amount += $validated['amount'];
+
+                // Automatically mark as completed if reached or exceeded
+                if ($goal->current_amount >= $goal->target_amount) {
+                    $goal->status = 'completed';
+                }
+
+                $goal->save();
+            }
+        }
+        return response()->json([
+            'message' => 'Transaction created successfully',
+            'data' => $transaction->load(['category', 'goal'])
+        ], 201);    
     }
 
     /**
