@@ -43,6 +43,10 @@ class Transaction extends Model
                 $user->wallet->recalculateBalance();
             }
         });
+
+        static::created(fn($tx) => self::updateMonthlySummary($tx->user_id));
+        static::updated(fn($tx) => self::updateMonthlySummary($tx->user_id));
+        static::deleted(fn($tx) => self::updateMonthlySummary($tx->user_id));
     }
 
     public function goal()
@@ -50,4 +54,30 @@ class Transaction extends Model
         return $this->belongsTo(Goal::class);
     }
 
+
+    public static function updateMonthlySummary($userId)
+    {
+        $month = now()->format('m');
+        $year = now()->format('Y');
+
+        $totalIncome = self::where('user_id', $userId)
+            ->where('type', 'income')
+            ->sum('amount');
+
+        $totalExpense = self::where('user_id', $userId)
+            ->where('type', 'expense')
+            ->sum('amount');
+
+        $profit = $totalIncome - $totalExpense;
+
+        BalanceSummary::updateOrCreate(
+            ['user_id' => $userId, 'month' => $month, 'year' => $year],
+            [
+                'total_income' => $totalIncome,
+                'total_expense' => $totalExpense,
+                'profit' => $profit,
+            ]
+        );
+
+    }
 }

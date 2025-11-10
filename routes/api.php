@@ -9,7 +9,8 @@ use App\Http\Controllers\{
     BudgetController,
     GoalController,
     WalletController,
-    InsightController
+    InsightController,
+    FinanceController
 };
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -32,5 +33,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/insights/summary', [InsightController::class, 'summary']);
     
     Route::get('/categories', [CategoryController::class, 'index']);
+    Route::get('/balance-summary', [FinanceController::class, 'balanceSummary']);
+
 
 });
