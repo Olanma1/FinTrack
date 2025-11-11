@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Http;
 use App\Http\Controllers\{
     AuthController,
     CategoryController,
@@ -10,7 +11,8 @@ use App\Http\Controllers\{
     GoalController,
     WalletController,
     InsightController,
-    FinanceController
+    FinanceController,
+    MonoExchangeController
 };
 
 Route::post('/register', [AuthController::class, 'register']);
@@ -35,5 +37,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/balance-summary', [FinanceController::class, 'balanceSummary']);
 
-
+    Route::post('/mono/exchange', [MonoExchangeController::class, 'exchange']);
+    Route::get('/mono/sync', [MonoExchangeController::class, 'importTransactions']);
 });
