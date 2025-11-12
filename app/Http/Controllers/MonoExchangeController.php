@@ -12,29 +12,29 @@ use function Illuminate\Log\log;
 class MonoExchangeController extends Controller
 {
     public function exchange(Request $request)
-    {
-        $validated = $request->validate([
-            'code' => 'required|string',
-        ]);
+{
+    $validated = $request->validate([
+        'code' => 'required|string',
+    ]);
 
-        $response = Http::withHeaders([
-            'mono-sec-key' => env('MONO_SECRET_KEY'),
-        ])->post('https://api.withmono.com/account/auth', [
-            'code' => $validated['code'],
-        ]);
+    $response = Http::withHeaders([
+        'mono-sec-key' => env('MONO_SECRET_KEY'),
+    ])->post('https://api.withmono.com/account/auth', [
+        'code' => $validated['code'],
+    ]);
 
-        $data = $response->json();
+    $data = $response->json();
 
-        if (!isset($data['id'])) {
-            return response()->json(['error' => 'Unable to link account'], 400);
-        }
-
-        // Save the Mono account ID to the user
-        $user = $request->user();
-        $user->update(['mono_account_id' => $data['id']]);
-
-        return response()->json(['message' => 'Bank account linked successfully']);
+    if (!isset($data['id'])) {
+        Log::error('Mono exchange failed', ['response' => $data]);
+        return response()->json(['error' => 'Unable to link account'], 400);
     }
+
+    $user = $request->user();
+    $user->update(['mono_account_id' => $data['id']]);
+
+    return response()->json(['message' => 'Bank account linked successfully']);
+}
 
     /**
      * Fetch and import bank transactions into FinTrack
@@ -86,10 +86,10 @@ class MonoExchangeController extends Controller
     'mono-sec-key' => "test_sk_zzx2uficff3vo61bo2dz",
     'Content-Type' => 'application/json',
 ])->post('https://api.withmono.com/v2/accounts/initiate', [
-    // 'customer' => [
-    //     'name' => $request->user()->name,
-    //     'email' => $request->user()->email,
-    // ],
+    'customer' => [
+        'name' => $request->user()->name,
+        'email' => $request->user()->email,
+    ],
     'meta' => [
         'ref' => uniqid('mono_'),
     ],
