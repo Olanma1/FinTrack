@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Transaction;
+use Illuminate\Support\Facades\Log;
+
+use function Illuminate\Log\log;
 
 class MonoExchangeController extends Controller
 {
@@ -73,5 +76,54 @@ class MonoExchangeController extends Controller
 
         return response()->json(['message' => 'Bank transactions synced successfully']);
     }
+
+ public function initiate(Request $request)
+{
+    $response = Http::withHeaders([
+    'mono-sec-key' => "test_sk_zzx2uficff3vo61bo2dz",
+    'Content-Type' => 'application/json',
+])->post('https://api.withmono.com/v2/accounts/initiate', [
+    // 'customer' => [
+    //     'name' => $request->user()->name,
+    //     'email' => $request->user()->email,
+    // ],
+    'meta' => [
+        'ref' => uniqid('mono_'),
+    ],
+    'scope' => 'auth',
+    'redirect_url' => 'https://fintrack-frontend.vercel.app/transactions',
+]);
+
+
+    if ($response->failed()) {
+        return response()->json([
+            'status' => 'failed',
+            'error' => $response->json(),
+        ], $response->status());
+    }
+
+    return response()->json([
+        'status' => 'success',
+        'mono_url' => $response->json('data.mono_url'),
+        'data' => $response->json('data'),
+    ]);
+}
+
+
+    public function webhook(Request $request)
+    {
+        $payload = $request->all();
+
+        if ($payload['event'] === 'account.linked') {
+            $accountId = $payload['data']['id'];
+
+            // Store the account ID for the user or trigger data fetch
+             $user = $request->user();
+            $user->update(['mono_account_id' => $accountId]);
+        }
+
+        return response()->json(['status' => 'ok']);
+    }
+
 }
 

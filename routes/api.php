@@ -19,6 +19,7 @@ Route::post('/register', [AuthController::class, 'register']);
 Route::post('/verify-otp', [AuthController::class, 'verifyOtp']);
 Route::post('/resend-otp', [AuthController::class, 'resendOtp']);
 Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/mono/initiate', [MonoExchangeController::class, 'initiate']);
 
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', [AuthController::class, 'user']);
@@ -37,6 +38,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/categories', [CategoryController::class, 'index']);
     Route::get('/balance-summary', [FinanceController::class, 'balanceSummary']);
 
+    Route::post('/mono/webhook', [MonoExchangeController::class, 'webhook']);
     Route::post('/mono/exchange', [MonoExchangeController::class, 'exchange']);
     Route::get('/mono/sync', [MonoExchangeController::class, 'importTransactions']);
 });
