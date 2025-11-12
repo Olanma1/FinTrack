@@ -91,7 +91,7 @@ class MonoExchangeController extends Controller
         'ref' => uniqid('mono_'),
     ],
     'scope' => 'auth',
-    'redirect_url' => 'https://fintrack-frontend.vercel.app/mono-callback',
+    'redirect_url' => 'https://fintrack-frontend-teal.vercel.app/mono-callback',
 ]);
 
 
