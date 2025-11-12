@@ -19,7 +19,7 @@ class MonoExchangeController extends Controller
 
     $response = Http::withHeaders([
         'mono-sec-key' => env('MONO_SECRET_KEY'),
-    ])->post('https://api.withmono.com/account/auth', [
+    ])->post('https://api.withmono.com/v2/accounts/auth', [
         'code' => $validated['code'],
     ]);
 
