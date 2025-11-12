@@ -79,6 +79,9 @@ class MonoExchangeController extends Controller
 
  public function initiate(Request $request)
 {
+    $user = $request->user();
+    $stateToken = $user->createToken('mono-redirect')->plainTextToken;
+
     $response = Http::withHeaders([
     'mono-sec-key' => "test_sk_zzx2uficff3vo61bo2dz",
     'Content-Type' => 'application/json',
@@ -92,6 +95,7 @@ class MonoExchangeController extends Controller
     ],
     'scope' => 'auth',
     'redirect_url' => 'https://fintrack-frontend-teal.vercel.app/mono-callback',
+    'state' => $stateToken, 
 ]);
 
 
@@ -106,6 +110,7 @@ class MonoExchangeController extends Controller
         'status' => 'success',
         'mono_url' => $response->json('data.mono_url'),
         'data' => $response->json('data'),
+        'state_token' => $stateToken,
     ]);
 }
 
