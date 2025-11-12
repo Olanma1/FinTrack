@@ -95,7 +95,6 @@ class MonoExchangeController extends Controller
     ],
     'scope' => 'auth',
     'redirect_url' => 'https://fintrack-frontend-teal.vercel.app/mono-callback',
-    'state' => $stateToken, 
 ]);
 
 
