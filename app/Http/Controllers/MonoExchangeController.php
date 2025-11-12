@@ -11,30 +11,30 @@ use function Illuminate\Log\log;
 
 class MonoExchangeController extends Controller
 {
-    public function exchange(Request $request)
-{
-    $validated = $request->validate([
-        'code' => 'required|string',
-    ]);
+   public function exchange(Request $request)
+    {
+        $validated = $request->validate([
+            'code' => 'required|string',
+        ]);
 
-    $response = Http::withHeaders([
-        'mono-sec-key' => env('MONO_SECRET_KEY'),
-    ])->post('https://api.withmono.com/v2/accounts/auth', [
-        'code' => $validated['code'],
-    ]);
+        $response = Http::withHeaders([
+            'mono-sec-key' => env('MONO_SECRET_KEY'),
+        ])->post('https://api.withmono.com/v2/accounts/auth', [
+            'code' => $validated['code'],
+        ]);
 
-    $data = $response->json();
+        $data = $response->json();
 
-    if (!isset($data['id'])) {
-        Log::error('Mono exchange failed', ['response' => $data]);
-        return response()->json(['error' => 'Unable to link account'], 400);
+        if (!isset($data['id'])) {
+            Log::error('Mono exchange failed', ['response' => $data]);
+            return response()->json(['error' => 'Unable to link account'], 400);
+        }
+
+        $user = $request->user();
+        $user->update(['mono_account_id' => $data['id']]);
+
+        return response()->json(['message' => 'Bank account linked successfully']);
     }
-
-    $user = $request->user();
-    $user->update(['mono_account_id' => $data['id']]);
-
-    return response()->json(['message' => 'Bank account linked successfully']);
-}
 
     /**
      * Fetch and import bank transactions into FinTrack
@@ -77,42 +77,36 @@ class MonoExchangeController extends Controller
         return response()->json(['message' => 'Bank transactions synced successfully']);
     }
 
- public function initiate(Request $request)
-{
-    $user = $request->user();
-    $stateToken = $user->createToken('mono-redirect')->plainTextToken;
+    public function initiate(Request $request)
+    {
+        $user = $request->user();
 
-    $response = Http::withHeaders([
-    'mono-sec-key' => "test_sk_zzx2uficff3vo61bo2dz",
-    'Content-Type' => 'application/json',
-])->post('https://api.withmono.com/v2/accounts/initiate', [
-    'customer' => [
-        'name' => $request->user()->name,
-        'email' => $request->user()->email,
-    ],
-    'meta' => [
-        'ref' => uniqid('mono_'),
-    ],
-    'scope' => 'auth',
-    'redirect_url' => 'https://fintrack-frontend-teal.vercel.app/mono-callback',
-]);
+        $response = Http::withHeaders([
+            'mono-sec-key' => env('MONO_SECRET_KEY'),
+            'Content-Type' => 'application/json',
+        ])->post('https://api.withmono.com/v2/accounts/initiate', [
+            'customer' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'meta' => [
+                'ref' => uniqid('mono_'),
+            ],
+            'scope' => 'auth',
+        ]);
 
+        if ($response->failed()) {
+            return response()->json([
+                'status' => 'failed',
+                'error' => $response->json(),
+            ], $response->status());
+        }
 
-    if ($response->failed()) {
         return response()->json([
-            'status' => 'failed',
-            'error' => $response->json(),
-        ], $response->status());
+            'status' => 'success',
+            'mono_url' => $response->json('data.mono_url'),
+        ]);
     }
-
-    return response()->json([
-        'status' => 'success',
-        'mono_url' => $response->json('data.mono_url'),
-        'data' => $response->json('data'),
-        'state_token' => $stateToken,
-    ]);
-}
-
 
     public function webhook(Request $request)
     {
