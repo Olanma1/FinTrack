@@ -6,8 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
-
-use function Illuminate\Log\log;
+use App\Models\Category;
+use Carbon\Carbon;
 
 class MonoExchangeController extends Controller
 {
@@ -155,6 +155,7 @@ class MonoExchangeController extends Controller
             return response()->json(['message' => 'No linked Mono account found.'], 404);
         }
 
+         try {
         $response = Http::withHeaders([
             'mono-sec-key' => config('services.mono.secret_key'),
             'accept' => 'application/json',
@@ -162,34 +163,71 @@ class MonoExchangeController extends Controller
             'paginate' => 'false', // ✅ fetch all results in one request
         ]);
 
-        if ($response->failed()) {
-            return response()->json([
-                'message' => 'Failed to fetch transactions from Mono',
-                'error' => $response->json(),
-            ], $response->status());
-        }
+         if ($response->failed()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Failed to fetch transactions',
+                    'details' => $response->json(),
+                ], $response->status());
+            }
 
-        foreach ($response['data'] as $txn) {
-            $category = \App\Models\Category::where('name', $txn['category'])->first();
-             $date = \Carbon\Carbon::parse($txn['date'])->toDateTimeString(); 
-    Transaction::updateOrCreate(
-        ['mono_transaction_id' => $txn['id']],
-        [
-            'user_id' => auth()->id(),
-            'narration' => $txn['narration'],
-            'amount' => $txn['amount'],
-            'type' => $txn['type'] === 'debit' ? 'expense' : 'income',
-            'balance' => $txn['balance'],
-            'date' => $date,
-            'category_id' => $category?->id,
-            'source' => 'mono',
-        ]
-    );
-        return response()->json([
-            'status' => 'success',
-            'data' => $response->json('data'),
-        ]);
+            $data = $response->json();
+
+            if (empty($data['data'])) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => 'No transactions found for this account.',
+                ]);
+            }
+
+            foreach ($data['data'] as $txn) {
+                // Convert date to MySQL-compatible format
+                $date = isset($txn['date']) ? Carbon::parse($txn['date'])->toDateTimeString() : now();
+
+                // Find or create the category
+                $category = null;
+                if (!empty($txn['category']) && $txn['category'] !== 'unknown') {
+                    $category = Category::firstOrCreate(
+                        ['name' => $txn['category']],
+                        ['description' => ucfirst(str_replace('_', ' ', $txn['category']))]
+                    );
+                }
+
+                // Map Mono transaction type to app type
+                $type = match ($txn['type']) {
+                    'debit' => 'expense',
+                    'credit' => 'income',
+                    default => 'other',
+                };
+
+                // Save or update transaction
+                Transaction::updateOrCreate(
+                    ['mono_transaction_id' => $txn['id']],
+                    [
+                        'user_id' => auth()->id(),
+                        'narration' => $txn['narration'] ?? 'No description',
+                        'amount' => $txn['amount'] ?? 0,
+                        'type' => $type,
+                        'balance' => $txn['balance'] ?? 0,
+                        'date' => $date,
+                        'category_id' => $category?->id,
+                        'source' => 'mono',
+                    ]
+                );
+            }
+
+            return response()->json([
+                'status' => 'success',
+                'message' => 'Transactions synced successfully',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Mono Transaction Fetch Error', ['error' => $e->getMessage()]);
+            return response()->json([
+                'status' => 'error',
+                'message' => 'An unexpected error occurred',
+                'details' => $e->getMessage(),
+            ], 500);
+        }
     }
 
-}
 }
