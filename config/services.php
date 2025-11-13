@@ -14,6 +14,11 @@ return [
     |
     */
 
+    // config/services.php
+    'mono' => [
+        'secret_key' => env('MONO_SECRET_KEY'),
+    ],
+
     'postmark' => [
         'token' => env('POSTMARK_TOKEN'),
     ],

@@ -41,4 +41,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/mono/webhook', [MonoExchangeController::class, 'webhook']);
     Route::post('/mono/exchange', [MonoExchangeController::class, 'exchange']);
     Route::get('/mono/sync', [MonoExchangeController::class, 'importTransactions']);
+    Route::get('/mono/transactions', [MonoExchangeController::class, 'getTransactions']);
+
 });
