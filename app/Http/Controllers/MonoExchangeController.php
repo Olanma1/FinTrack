@@ -9,6 +9,8 @@ use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 use App\Models\Category;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\BankLinkedMail;
 
 class MonoExchangeController extends Controller
 {
@@ -46,6 +48,8 @@ class MonoExchangeController extends Controller
         $accountId = $data['data']['id'];
         $user = $request->user();
         $user->update(['mono_account_id' => $accountId]);
+
+         Mail::to($user->email)->send(new BankLinkedMail($user));
 
         return response()->json(['message' => 'Bank account linked successfully']);
     }

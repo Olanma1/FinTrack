@@ -76,7 +76,7 @@ class AuthController extends Controller
         $token = $user->createToken('api')->plainTextToken;
 
         if ($user->is_verified) {
-            Mail::raw("Welcome to FinTrack!!!, Your one stop shop for finacial Book keeping", function ($message) use ($user) {
+            Mail::raw("Welcome to FinTrack!!! Your one stop shop for finacial Book keeping", function ($message) use ($user) {
             $message->to($user->email)
                     ->subject('Welcome');
         });
