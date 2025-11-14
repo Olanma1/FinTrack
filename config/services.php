@@ -17,6 +17,7 @@ return [
     // config/services.php
     'mono' => [
         'secret_key' => env('MONO_SECRET_KEY'),
+        'webhook_secret' => env('MONO_WEBHOOK_SECRET'),
     ],
 
     'postmark' => [

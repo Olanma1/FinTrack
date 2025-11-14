@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
+use App\Models\User;
 use App\Models\Transaction;
 use Illuminate\Support\Facades\Log;
 use App\Models\Category;
@@ -228,6 +229,78 @@ class MonoExchangeController extends Controller
                 'details' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    public function handle(Request $request)
+    {
+        Log::info("🔥 Mono Webhook Received", $request->all());
+
+        $secret = config('services.mono.webhook_secret');
+
+        if (!$this->verifySignature($request, $secret)) {
+            Log::warning("❌ Invalid Mono Webhook Signature");
+            return response()->json(['message' => 'Invalid signature'], 401);
+        }
+
+        $event = $request->input('event');
+        $data = $request->input('data');
+
+        if ($event === "transactions.added") {
+            return $this->importNewTransactions($data);
+        }
+
+        return response()->json(['message' => 'Ignored'], 200);
+    }
+
+    private function verifySignature(Request $request, $secret)
+    {
+        $signature = $request->header('mono-signature');
+        $hash = hash_hmac('sha256', $request->getContent(), $secret);
+
+        return hash_equals($signature, $hash);
+    }
+
+    private function importNewTransactions($data)
+    {
+        $accountId = $data['accountId'];
+
+        // 🔄 Trigger a fresh sync
+        Http::withToken(config('services.mono.secret_key'))
+            ->post("https://api.withmono.com/accounts/{$accountId}/sync");
+
+        $response = Http::withToken(config('services.mono.secret_key'))
+            ->get("https://api.withmono.com/accounts/{$accountId}/transactions");
+
+        $transactions = $response->json()['data'] ?? [];
+
+        foreach ($transactions as $tx) {
+
+            if (Transaction::where('mono_transaction_id', $tx['_id'])->exists()) {
+                continue;
+            }
+
+            // Insert new transaction
+            Transaction::create([
+                'mono_transaction_id' => $tx['_id'],
+                'user_id' => $this->getUserIdFromAccount($accountId),
+                'narration' => $tx['narration'] ?? null,
+                'amount' => $tx['amount'] * 100, 
+                'type' => $tx['type'] === "credit" ? "income" : "expense",
+                'balance' => $tx['balance'] ?? 0,
+                'date' => Carbon::parse($tx['date'])->toDateTimeString(),
+                'source' => 'mono',
+                'category_id' => null,
+            ]);
+        }
+
+        Log::info("✅ New Mono transactions imported");
+
+        return response()->json(['message' => 'ok'], 200);
+    }
+
+    private function getUserIdFromAccount($accountId)
+    {
+        return User::where('mono_account_id', $accountId)->value('id');
     }
 
 }
