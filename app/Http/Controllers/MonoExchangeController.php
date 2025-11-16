@@ -85,7 +85,7 @@ class MonoExchangeController extends Controller
         foreach ($transactions as $tx) {
             Transaction::updateOrCreate(
                 [
-                    'reference' => $tx['_id'],
+                    'mono_transaction_id' => $tx['_id'],
                     'user_id' => $user->id,
                 ],
                 [
@@ -306,5 +306,30 @@ class MonoExchangeController extends Controller
     {
         return User::where('mono_account_id', $accountId)->value('id');
     }
+
+    public function unlink(Request $request)
+    {
+        $user = $request->user();
+
+        if (!$user->mono_account_id) {
+            return response()->json(['error' => 'No linked bank account'], 400);
+        }
+
+        try {
+            Http::withHeaders([
+                'mono-sec-key' => config('services.mono.secret_key'),
+            ])->post("https://api.withmono.com/v2/accounts/{$user->mono_account_id}/unlink");
+
+        } catch (\Exception $e) {
+            // Even if Mono unlink fails, still remove locally
+            Log::error("Mono unlink failed", ['error' => $e->getMessage()]);
+        }
+
+        // 🔥 Remove Mono account from user
+        $user->update(['mono_account_id' => null]);
+
+        return response()->json(['message' => 'Bank account unlinked successfully']);
+    }
+
 
 }
