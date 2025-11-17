@@ -11,6 +11,8 @@ use App\Models\Category;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\BankLinkedMail;
+use App\Mail\BankUnlinkedMail;
+
 
 class MonoExchangeController extends Controller
 {
@@ -327,6 +329,8 @@ class MonoExchangeController extends Controller
 
         // 🔥 Remove Mono account from user
         $user->update(['mono_account_id' => null]);
+
+        Mail::to($user->email)->send(new BankUnlinkedMail($user));
 
         return response()->json(['message' => 'Bank account unlinked successfully']);
     }
