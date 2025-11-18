@@ -162,56 +162,58 @@ class MonoExchangeController extends Controller
             return response()->json(['message' => 'No linked Mono account found.'], 404);
         }
 
-         try {
-        $response = Http::withHeaders([
-            'mono-sec-key' => config('services.mono.secret_key'),
-            'accept' => 'application/json',
-        ])->get("https://api.withmono.com/v2/accounts/{$account->mono_account_id}/transactions", [
-            'paginate' => 'false', // ✅ fetch all results in one request
-        ]);
+        try {
+            $page = 1;
+            $perPage = 50; // Fetch 50 transactions per request
+            $totalFetched = 0;
 
-         if ($response->failed()) {
-                return response()->json([
-                    'status' => 'error',
-                    'message' => 'Failed to fetch transactions',
-                    'details' => $response->json(),
-                ], $response->status());
-            }
-
-            $data = $response->json();
-
-            if (empty($data['data'])) {
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'No transactions found for this account.',
+            do {
+                $response = Http::withHeaders([
+                    'mono-sec-key' => config('services.mono.secret_key'),
+                    'accept' => 'application/json',
+                ])->get("https://api.withmono.com/v2/accounts/{$account->mono_account_id}/transactions", [
+                    'page' => $page,
+                    'perPage' => $perPage, // limit per request
                 ]);
-            }
 
-            foreach ($data['data'] as $txn) {
-                // Convert date to MySQL-compatible format
-                $date = isset($txn['date']) ? Carbon::parse($txn['date'])->toDateTimeString() : now();
-
-                // Find or create the category
-                $category = null;
-                if (!empty($txn['category']) && $txn['category'] !== 'unknown') {
-                    $category = Category::firstOrCreate(
-                        ['name' => $txn['category']],
-                        ['description' => ucfirst(str_replace('_', ' ', $txn['category']))]
-                    );
+                if ($response->failed()) {
+                    return response()->json([
+                        'status' => 'error',
+                        'message' => 'Failed to fetch transactions',
+                        'details' => $response->json(),
+                    ], $response->status());
                 }
 
-                // Map Mono transaction type to app type
-                $type = match ($txn['type']) {
-                    'debit' => 'expense',
-                    'credit' => 'income',
-                    default => 'other',
-                };
+                $data = $response->json()['data'] ?? [];
 
-                // Save or update transaction
-                Transaction::updateOrCreate(
-                    ['mono_transaction_id' => $txn['id']],
-                    [
-                        'user_id' => auth()->id(),
+                if (empty($data)) {
+                    break; // No more transactions
+                }
+
+                $transactionsToInsert = [];
+
+                foreach ($data as $txn) {
+                    $date = isset($txn['date']) ? Carbon::parse($txn['date'])->toDateTimeString() : now();
+
+                    // Handle category
+                    $category = null;
+                    if (!empty($txn['category']) && $txn['category'] !== 'unknown') {
+                        $category = Category::firstOrCreate(
+                            ['name' => $txn['category']],
+                            ['description' => ucfirst(str_replace('_', ' ', $txn['category']))]
+                        );
+                    }
+
+                    // Map Mono transaction type to app type
+                    $type = match ($txn['type'] ?? 'other') {
+                        'debit' => 'expense',
+                        'credit' => 'income',
+                        default => 'other',
+                    };
+
+                    $transactionsToInsert[] = [
+                        'user_id' => $account->id,
+                        'mono_transaction_id' => $txn['id'],
                         'narration' => $txn['narration'] ?? 'No description',
                         'amount' => $txn['amount'] ?? 0,
                         'type' => $type,
@@ -219,14 +221,29 @@ class MonoExchangeController extends Controller
                         'date' => $date,
                         'category_id' => $category?->id,
                         'source' => 'mono',
-                    ]
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ];
+                }
+
+                // Bulk insert or update
+                Transaction::upsert(
+                    $transactionsToInsert,
+                    ['mono_transaction_id'], // unique key
+                    ['amount', 'type', 'balance', 'date', 'category_id', 'narration', 'updated_at']
                 );
-            }
+
+                $totalFetched += count($data);
+                $page++;
+
+            } while (count($data) === $perPage); // Continue if full page returned
 
             return response()->json([
                 'status' => 'success',
-                'message' => 'Transactions synced successfully',
+                'message' => "Transactions synced successfully",
+                'total_synced' => $totalFetched,
             ]);
+
         } catch (\Exception $e) {
             Log::error('Mono Transaction Fetch Error', ['error' => $e->getMessage()]);
             return response()->json([
@@ -236,7 +253,6 @@ class MonoExchangeController extends Controller
             ], 500);
         }
     }
-
     public function handle(Request $request)
     {
         Log::info("🔥 Mono Webhook Received", $request->all());
