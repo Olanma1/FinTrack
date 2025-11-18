@@ -59,50 +59,50 @@ class MonoExchangeController extends Controller
     /**
      * Fetch and import bank transactions into FinTrack
      */
-    public function importTransactions(Request $request)
-    {
-        $user = $request->user();
+    // public function importTransactions(Request $request)
+    // {
+    //     $user = $request->user();
 
-        $secret = config('services.mono.secret_key');
+    //     $secret = config('services.mono.secret_key');
 
-        if (!$secret) {
-            Log::error('Mono secret key is missing from configuration');
-            return response()->json(['error' => 'Server configuration error'], 500);
-        }
+    //     if (!$secret) {
+    //         Log::error('Mono secret key is missing from configuration');
+    //         return response()->json(['error' => 'Server configuration error'], 500);
+    //     }
 
-        if (!$user->mono_account_id) {
-            return response()->json(['error' => 'User has not linked a bank account'], 400);
-        }
+    //     if (!$user->mono_account_id) {
+    //         return response()->json(['error' => 'User has not linked a bank account'], 400);
+    //     }
 
-        $response = Http::withHeaders([
-            'mono-sec-key' => $secret,
-        ])->get("https://api.withmono.com/accounts/{$user->mono_account_id}/transactions?limit=100");
+    //     $response = Http::withHeaders([
+    //         'mono-sec-key' => $secret,
+    //     ])->get("https://api.withmono.com/accounts/{$user->mono_account_id}/transactions?limit=100");
 
-        if (!$response->successful()) {
-            return response()->json(['error' => 'Unable to fetch transactions'], 500);
-        }
+    //     if (!$response->successful()) {
+    //         return response()->json(['error' => 'Unable to fetch transactions'], 500);
+    //     }
 
-        $transactions = $response->json()['data'] ?? [];
+    //     $transactions = $response->json()['data'] ?? [];
 
-        foreach ($transactions as $tx) {
-            Transaction::updateOrCreate(
-                [
-                    'mono_transaction_id' => $tx['_id'],
-                    'user_id' => $user->id,
-                ],
-                [
-                    'type' => $tx['amount'] < 0 ? 'expense' : 'income',
-                    'amount' => abs($tx['amount']),
-                    'note' => $tx['narration'] ?? 'Bank transaction',
-                    'category_id' => null, // you can later map automatically
-                    'date' => $tx['date'],
-                    'source' => 'mono',
-                ]
-            );
-        }
+    //     foreach ($transactions as $tx) {
+    //         Transaction::updateOrCreate(
+    //             [
+    //                 'mono_transaction_id' => $tx['_id'],
+    //                 'user_id' => $user->id,
+    //             ],
+    //             [
+    //                 'type' => $tx['amount'] < 0 ? 'expense' : 'income',
+    //                 'amount' => abs($tx['amount']),
+    //                 'note' => $tx['narration'] ?? 'Bank transaction',
+    //                 'category_id' => null, // you can later map automatically
+    //                 'date' => $tx['date'],
+    //                 'source' => 'mono',
+    //             ]
+    //         );
+    //     }
 
-        return response()->json(['message' => 'Bank transactions synced successfully']);
-    }
+    //     return response()->json(['message' => 'Bank transactions synced successfully']);
+    // }
 
     public function initiate(Request $request)
     {
@@ -154,7 +154,7 @@ class MonoExchangeController extends Controller
         return response()->json(['status' => 'ok']);
     }
 
-    public function getTransactions(Request $request)
+    public function importTransactions(Request $request)
     {
         $account = $request->user();
 
