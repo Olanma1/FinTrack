@@ -8,6 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use App\Models\User;
 
 class BankUnlinkedMail extends Mailable
 {
@@ -18,16 +19,15 @@ class BankUnlinkedMail extends Mailable
     /**
      * Create a new message instance.
      */
-    public function __construct($user)
-{
-    $this->user = $user;
-}
+    public function __construct(User $user)
+    {
+        $this->user = $user;
+    }
 
     public function build()
     {
         return $this->subject('Your Bank Account Has Been Unlinked')
-            ->view('emails.bank-unlinked')
-            ->with(['user' => $this->user]);
+            ->markdown('emails.bank-unlinked');
     }
 
 }
