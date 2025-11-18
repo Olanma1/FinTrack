@@ -187,7 +187,7 @@ class MonoExchangeController extends Controller
                 $data = $response->json()['data'] ?? [];
 
                 if (empty($data)) {
-                    break; // No more transactions
+                    break; 
                 }
 
                 $transactionsToInsert = [];
@@ -195,7 +195,6 @@ class MonoExchangeController extends Controller
                 foreach ($data as $txn) {
                     $date = isset($txn['date']) ? Carbon::parse($txn['date'])->toDateTimeString() : now();
 
-                    // Handle category
                     $category = null;
                     if (!empty($txn['category']) && $txn['category'] !== 'unknown') {
                         $category = Category::firstOrCreate(
@@ -204,7 +203,6 @@ class MonoExchangeController extends Controller
                         );
                     }
 
-                    // Map Mono transaction type to app type
                     $type = match ($txn['type'] ?? 'other') {
                         'debit' => 'expense',
                         'credit' => 'income',
