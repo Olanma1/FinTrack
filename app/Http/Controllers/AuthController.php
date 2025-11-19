@@ -12,6 +12,8 @@ use App\Mail\OtpMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
+
 
 class AuthController extends Controller
 {
@@ -148,6 +150,35 @@ class AuthController extends Controller
     {
         return $request->user();
     }
+
+    public function updateProfile(Request $request)
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string|max:255',
+            'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
+
+        if ($request->hasFile('avatar')) {
+
+            Log::info('Cloudinary URL: ' . env('CLOUDINARY_URL'));
+            $uploaded = Cloudinary::upload(
+                $request->file('avatar')->getRealPath(),
+                ['folder' => 'avatars']
+            );
+
+            $validated['avatar'] = $uploaded->getSecurePath();
+        }
+
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => $user,
+        ]);
+    }
+
 
     public function logout(Request $request)
     {
