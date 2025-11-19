@@ -17,6 +17,7 @@ use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
 
 class AuthController extends Controller
 {
+    
     public function register(RegisterRequest $request)
     {
         $user = User::create([
@@ -153,6 +154,17 @@ class AuthController extends Controller
 
     public function updateProfile(Request $request)
     {
+        Cloudinary::config([
+            'cloud' => [
+                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
+                'api_key' => env('CLOUDINARY_API_KEY'),
+                'api_secret' => env('CLOUDINARY_API_SECRET')
+            ],
+            'url' => [
+                'secure' => true
+            ]
+        ]);
+
         $user = $request->user();
 
         $validated = $request->validate([
