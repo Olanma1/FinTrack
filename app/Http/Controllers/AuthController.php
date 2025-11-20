@@ -12,8 +12,9 @@ use App\Mail\OtpMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use CloudinaryLabs\CloudinaryLaravel\Facades\Cloudinary;
-
+use Cloudinary\Cloudinary;
+use Cloudinary\Configuration\Configuration;
+use Cloudinary\Api\Upload\UploadApi;
 
 class AuthController extends Controller
 {
@@ -153,43 +154,49 @@ class AuthController extends Controller
     }
 
     public function updateProfile(Request $request)
-    {
-        Cloudinary::config([
-            'cloud' => [
-                'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
-                'api_key' => env('CLOUDINARY_API_KEY'),
-                'api_secret' => env('CLOUDINARY_API_SECRET')
-            ],
-            'url' => [
-                'secure' => true
-            ]
-        ]);
+{
+    $user = $request->user();
 
-        $user = $request->user();
+    $validated = $request->validate([
+        'name'   => 'sometimes|string|max:255',
+        'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+    ]);
 
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
-        ]);
+    if ($request->hasFile('avatar')) {
+        try {
+            // Initialize UploadApi with config array from .env
+            $uploadApi = new UploadApi([
+                'cloud' => [
+                    'cloud_name' => config('cloudinary.cloud.cloud_name'),
+                    'api_key'    => config('cloudinary.cloud.api_key'),
+                    'api_secret' => config('cloudinary.cloud.api_secret'),
+                ],
+                'url' => [
+                    'secure' => true,
+                ],
+            ]);
 
-        if ($request->hasFile('avatar')) {
+            $uploaded = $uploadApi->upload($request->file('avatar')->getRealPath(), [
+                'folder' => 'avatars',
+            ]);
 
-            Log::info('Cloudinary URL: ' . env('CLOUDINARY_URL'));
-            $uploaded = Cloudinary::upload(
-                $request->file('avatar')->getRealPath(),
-                ['folder' => 'avatars']
-            );
-
-            $validated['avatar'] = $uploaded->getSecurePath();
+            $validated['avatar'] = $uploaded['secure_url'];
+        } catch (\Exception $e) {
+            Log::error('Cloudinary upload failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => 'Failed to upload avatar',
+                'error'   => $e->getMessage(),
+            ], 500);
         }
-
-        $user->update($validated);
-
-        return response()->json([
-            'message' => 'Profile updated successfully',
-            'user' => $user,
-        ]);
     }
+
+    $user->update($validated);
+
+    return response()->json([
+        'message' => 'Profile updated successfully',
+        'user'    => $user,
+    ]);
+}
 
 
     public function logout(Request $request)
