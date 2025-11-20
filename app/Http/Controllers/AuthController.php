@@ -35,10 +35,8 @@ class AuthController extends Controller
 
         // Send OTP to user
 
-        Mail::raw("Your FinTrack OTP code is: {$otp}", function ($message) use ($user) {
-        $message->to($user->email)
-                ->subject('Your FinTrack OTP Code');
-        });
+        Mail::to($user->email)->send(new OtpMail($user));
+
         $user->update([
             'otp' => $otp,
             'otp_expires_at' => Carbon::now()->addMinutes(10),
