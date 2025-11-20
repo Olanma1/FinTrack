@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OtpMail;
+use App\Mail\WelcomeUserMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -80,10 +81,7 @@ class AuthController extends Controller
         $token = $user->createToken('api')->plainTextToken;
 
         if ($user->is_verified) {
-            Mail::raw("Welcome to FinTrack!!! Your one stop shop for finacial Book keeping", function ($message) use ($user) {
-            $message->to($user->email)
-                    ->subject('Welcome');
-        });
+            Mail::to($user->email)->send(new WelcomeUserMail($user));
         }
         
         return response()->json([
@@ -154,50 +152,49 @@ class AuthController extends Controller
     }
 
     public function updateProfile(Request $request)
-{
-    $user = $request->user();
+    {
+        $user = $request->user();
 
-    $validated = $request->validate([
-        'name'   => 'sometimes|string|max:255',
-        'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
-    ]);
+        $validated = $request->validate([
+            'name'   => 'sometimes|string|max:255',
+            'avatar' => 'sometimes|image|mimes:jpeg,png,jpg|max:2048',
+        ]);
 
-    if ($request->hasFile('avatar')) {
-        try {
-            // Initialize UploadApi with config array from .env
-            $uploadApi = new UploadApi([
-                'cloud' => [
-                    'cloud_name' => config('cloudinary.cloud.cloud_name'),
-                    'api_key'    => config('cloudinary.cloud.api_key'),
-                    'api_secret' => config('cloudinary.cloud.api_secret'),
-                ],
-                'url' => [
-                    'secure' => true,
-                ],
-            ]);
+        if ($request->hasFile('avatar')) {
+            try {
+                // Initialize UploadApi with config array from .env
+                $uploadApi = new UploadApi([
+                    'cloud' => [
+                        'cloud_name' => config('cloudinary.cloud.cloud_name'),
+                        'api_key'    => config('cloudinary.cloud.api_key'),
+                        'api_secret' => config('cloudinary.cloud.api_secret'),
+                    ],
+                    'url' => [
+                        'secure' => true,
+                    ],
+                ]);
 
-            $uploaded = $uploadApi->upload($request->file('avatar')->getRealPath(), [
-                'folder' => 'avatars',
-            ]);
+                $uploaded = $uploadApi->upload($request->file('avatar')->getRealPath(), [
+                    'folder' => 'avatars',
+                ]);
 
-            $validated['avatar'] = $uploaded['secure_url'];
-        } catch (\Exception $e) {
-            Log::error('Cloudinary upload failed: ' . $e->getMessage());
-            return response()->json([
-                'message' => 'Failed to upload avatar',
-                'error'   => $e->getMessage(),
-            ], 500);
+                $validated['avatar'] = $uploaded['secure_url'];
+            } catch (\Exception $e) {
+                Log::error('Cloudinary upload failed: ' . $e->getMessage());
+                return response()->json([
+                    'message' => 'Failed to upload avatar',
+                    'error'   => $e->getMessage(),
+                ], 500);
+            }
         }
+
+        $user->update($validated);
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user'    => $user,
+        ]);
     }
-
-    $user->update($validated);
-
-    return response()->json([
-        'message' => 'Profile updated successfully',
-        'user'    => $user,
-    ]);
-}
-
 
     public function logout(Request $request)
     {
