@@ -13,8 +13,6 @@ use App\Mail\WelcomeUserMail;
 use Illuminate\Validation\ValidationException;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
-use Cloudinary\Cloudinary;
-use Cloudinary\Configuration\Configuration;
 use Cloudinary\Api\Upload\UploadApi;
 
 class AuthController extends Controller
@@ -199,4 +197,18 @@ class AuthController extends Controller
         $request->user()->tokens()->delete();
         return response()->json(['message' => 'Logged out']);
     }
+
+    public function deleteAccount(Request $request)
+    {
+        $user = $request->user();
+
+        $user->tokens()->delete();
+
+        $user->delete();
+
+        return response()->json([
+            'message' => 'Your account has been deleted. You can restore it within 30 days.',
+        ]);
+    }
+
 }
